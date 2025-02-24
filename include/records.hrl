@@ -1,0 +1,6 @@
+-record(app_state, {app_name, username, state}).
+-record(app_history, {app_name, username, history}).
+-record(user, {username, password_hash, salt}).
+-record(session, {session_id, username, timestamp}).
+-record(app_version, {app_name, version_id, timestamp, metadata}).
+-record(app_data, {app_name, version_id, data}).

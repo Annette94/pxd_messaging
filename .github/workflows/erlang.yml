@@ -1,0 +1,101 @@
+name: Erlang CI/CD
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Setup Erlang
+      uses: erlef/setup-beam@v1
+      with:
+        otp-version: '27'
+        rebar3-version: '3.24.0'
+    - name: Compile
+      run: rebar3 compile
+    - name: Run tests
+      run: rebar3 eunit
+    - name: Create release
+      run: rebar3 as prod release
+    - name: Create tarball
+      run: rebar3 as prod tar
+    - name: Upload Release Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: messaging-release
+        path: _build/prod/rel/messaging/messaging-*.tar.gz
+        retention-days: 5
+
+  #deploy:
+  #  needs: build
+  #  if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+  #  runs-on: ubuntu-latest
+  #  steps:
+  #  - name: Download Release Artifact
+  #    uses: actions/download-artifact@v4
+  #    with:
+  #      name: messaging-release
+  #      path: ./release
+    
+  #  - name: Set up AWS CLI
+  #    uses: aws-actions/configure-aws-credentials@v2
+  #    with:
+  #      aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  #      aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  #      aws-region: ${{ secrets.AWS_REGION }}
+    
+  #  - name: Get release filename
+  #    id: get_release_filename
+  #    run: |
+  #      FILENAME=$(ls ./release/messaging-*.tar.gz | head -n 1)
+  #      echo "RELEASE_FILENAME=$(basename $FILENAME)" >> $GITHUB_OUTPUT
+  #      echo "RELEASE_PATH=$FILENAME" >> $GITHUB_OUTPUT
+    
+  #  - name: Copy Release to S3
+  #    run: |
+  #      aws s3 cp ${{ steps.get_release_filename.outputs.RELEASE_PATH }} s3://${{ secrets.AWS_S3_BUCKET }}/releases/${{ steps.get_release_filename.outputs.RELEASE_FILENAME }}
+    
+  #  - name: Deploy to EC2
+  #    uses: appleboy/ssh-action@master
+  #    with:
+  #      host: ${{ secrets.EC2_HOST }}
+  #      username: ${{ secrets.EC2_USERNAME }}
+  #      key: ${{ secrets.EC2_SSH_KEY }}
+  #      script: |
+  #        # Create deployment directory if it doesn't exist
+  #        mkdir -p ~/deployments
+          
+          # Download the release from S3
+  #        aws s3 cp s3://${{ secrets.AWS_S3_BUCKET }}/releases/${{ steps.get_release_filename.outputs.RELEASE_FILENAME }} ~/deployments/
+          
+          # Extract the release
+  #        cd ~/deployments
+  #        tar -xzf ${{ steps.get_release_filename.outputs.RELEASE_FILENAME }}
+          
+          # Stop the current service if running
+  #        if [ -f ~/messaging/bin/messaging ]; then
+  #          ~/messaging/bin/messaging stop || true
+  #        fi
+          
+          # Move the new release to the application directory
+  #        rm -rf ~/messaging || true
+  #        mkdir -p ~/messaging
+  #        mv messaging/* ~/messaging/
+          
+          # Start the application
+  #        cd ~/messaging
+  #        bin/messaging daemon
+          
+          # Check if application started successfully
+  #        sleep 5
+  #        if bin/messaging ping; then
+  #          echo "Deployment successful"
+  #        else
+  #          echo "Deployment failed"
+  #          exit 1
+  #        fi
